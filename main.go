@@ -2,7 +2,10 @@ package main
 
 import (
 	"bufio"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -22,6 +25,16 @@ func safeEncodeString(s string) string {
 	return strings.TrimRight(dst, "=")
 }
 
+func sign(header, payload, key []byte) []byte {
+	hasher := hmac.New(sha256.New, key)
+	str := safeEncodeString(string(header)) + "." + safeEncodeString(string(payload))
+	n, err := hasher.Write([]byte(str))
+	if err != nil || n != len(str) {
+		panic("error writing to hasher")
+	}
+	return hasher.Sum(nil)
+}
+
 func main() {
 	sc := bufio.NewScanner(os.Stdin)
 	sc.Buffer(make([]byte, 1024*1024), 1024*1024)
@@ -34,10 +47,51 @@ func main() {
 			continue
 		}
 		// fmt.Println(line)
-		parts := strings.Split(line, "|")
-		header := safeEncodeString(parts[0])
-		payload := safeEncodeString(parts[1])
+		parts := strings.Split(line, " ")
+		cmd := parts[0]
+		rest := strings.Join(parts[1:], " ")
 
-		fmt.Println(header + "." + payload)
+		if cmd == "SIGN" {
+			parts = strings.Split(rest, "|")
+			headerB64 := safeEncodeString(parts[0])
+			payloadB64 := safeEncodeString(parts[1])
+			key, err := hex.DecodeString(strings.TrimSpace(parts[2]))
+			if err != nil {
+				panic("invalid hex key")
+			}
+			hasher := hmac.New(sha256.New, key)
+			str := headerB64 + "." + payloadB64
+			n, err := hasher.Write([]byte(str))
+			if err != nil || n != len(str) {
+				panic("error writing to hasher")
+			}
+			sig := hasher.Sum(nil)
+			jwt := str + "." + safeEncodeString(string(sig))
+			fmt.Println(jwt)
+		}
+		if cmd == "VERIFY" {
+			parts1 := strings.Split(rest, "|")
+			key, err := hex.DecodeString(strings.TrimSpace(parts1[1]))
+			if err != nil {
+				panic("invalid hex key")
+			}
+			jwtParts := strings.Split(parts1[0], ".")
+			headerBytes, err := safeDecodeString(jwtParts[0])
+			if err != nil {
+				panic("invalid base64 header")
+			}
+			payloadBytes, err := safeDecodeString(jwtParts[1])
+			if err != nil {
+				panic("invalid base64 payload")
+			}
+			sig := jwtParts[2]
+			theSig := sign(headerBytes, payloadBytes, key)
+			if sig == safeEncodeString(string(theSig)) {
+				fmt.Println("OK")
+			} else {
+				fmt.Println("BAD")
+			}
+		}
+
 	}
 }
