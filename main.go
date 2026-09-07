@@ -9,6 +9,18 @@ import (
 )
 
 // TODO (structure): implement per the lesson description.
+func safeDecodeString(s string) ([]byte, error) {
+	L := len(s)
+	if L%4 != 0 {
+		s += strings.Repeat("=", 4-(L%4))
+	}
+	return base64.URLEncoding.DecodeString(s)
+}
+
+func safeEncodeString(s string) string {
+	dst := base64.URLEncoding.EncodeToString([]byte(s))
+	return strings.TrimRight(dst, "=")
+}
 
 func main() {
 	sc := bufio.NewScanner(os.Stdin)
@@ -21,24 +33,11 @@ func main() {
 		if line == "" {
 			continue
 		}
-		//fmt.Println(line)
-		parts := strings.Split(line, " ")
-		rest := strings.Join(parts[1:], " ")
-		if parts[0] == "ENCODE" {
-			dst := base64.URLEncoding.EncodeToString([]byte(rest))
-			fmt.Println(strings.TrimRight(dst, "="))
-		}
-		if parts[0] == "DECODE" {
-			L := len(rest)
-			if L%4 != 0 {
-				rest += strings.Repeat("=", 4-(L%4))
-			}
-			src, err := base64.URLEncoding.DecodeString(rest)
-			if err != nil {
-				fmt.Println("Error decoding base64 string")
-				panic(err)
-			}
-			fmt.Println(string(src))
-		}
+		// fmt.Println(line)
+		parts := strings.Split(line, "|")
+		header := safeEncodeString(parts[0])
+		payload := safeEncodeString(parts[1])
+
+		fmt.Println(header + "." + payload)
 	}
 }
