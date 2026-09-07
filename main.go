@@ -86,7 +86,8 @@ func main() {
 			}
 			sig := jwtParts[2]
 			theSig := sign(headerBytes, payloadBytes, key)
-			if sig == safeEncodeString(string(theSig)) {
+
+			if hmac.Equal([]byte(sig), []byte(safeEncodeString(string(theSig)))) {
 				fmt.Println("OK")
 			} else {
 				fmt.Println("BAD")
