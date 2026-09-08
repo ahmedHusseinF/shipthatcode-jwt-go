@@ -78,8 +78,10 @@ func main() {
 					panic("invalid hex key")
 				}
 				hs256Keys = append(hs256Keys, keyBytes)
+				rsaPublicKeys = make([]string, 0)
 			} else if kind == "pub" {
 				rsaPublicKeys = append(rsaPublicKeys, key)
+				hs256Keys = make([][]byte, 0)
 			}
 			fmt.Println("OK")
 		}
@@ -103,7 +105,6 @@ func main() {
 				continue
 			}
 			header.Alg = strings.TrimSpace(header.Alg)
-			// fmt.Println("header.Alg:", header.Alg)
 			if !strings.HasPrefix(header.Alg, "HS") && !strings.HasPrefix(header.Alg, "RS") {
 				fmt.Println("REJECTED bad_alg")
 				continue
@@ -123,10 +124,17 @@ func main() {
 					if len(key) == 0 {
 						continue
 					}
+					if len(jwtParts) <= 2 || len(jwtParts[2]) == 0 {
+						fmt.Println("REJECTED bad_token")
+						found = true
+						break
+					}
 					expectedSig := signHs(headerBytes, payloadBytes, []byte(key))
 					sigBytes, err := safeDecodeString(jwtParts[2])
 					if err != nil {
-						panic("invalid base64 signature")
+						fmt.Println("REJECTED bad_token")
+						found = true
+						break
 					}
 					if hmac.Equal(sigBytes, expectedSig) {
 						fmt.Println("OK")
