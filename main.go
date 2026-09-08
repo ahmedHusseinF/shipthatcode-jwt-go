@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const e uint64 = 65537
+
 // TODO (structure): implement per the lesson description.
 func safeDecodeString(s string) ([]byte, error) {
 	L := len(s)
@@ -71,23 +73,29 @@ func main() {
 		}
 		if cmd == "VERIFY" {
 			parts1 := strings.Split(rest, "|")
-			key, err := hex.DecodeString(strings.TrimSpace(parts1[1]))
+			expectedSig, err := hex.DecodeString(strings.TrimSpace(parts1[1]))
 			if err != nil {
 				panic("invalid hex key")
 			}
-			jwtParts := strings.Split(parts1[0], ".")
-			headerBytes, err := safeDecodeString(jwtParts[0])
-			if err != nil {
-				panic("invalid base64 header")
-			}
-			payloadBytes, err := safeDecodeString(jwtParts[1])
-			if err != nil {
-				panic("invalid base64 payload")
-			}
-			sig := jwtParts[2]
-			theSig := sign(headerBytes, payloadBytes, key)
 
-			if hmac.Equal([]byte(sig), []byte(safeEncodeString(string(theSig)))) {
+			jwtParts := strings.Split(parts1[0], ".")
+			// headerBytes, err := safeDecodeString(jwtParts[0])
+			// if err != nil {
+			// 	panic("invalid base64 header")
+			// }
+			// payloadBytes, err := safeDecodeString(jwtParts[1])
+			// if err != nil {
+			// 	panic("invalid base64 payload")
+			// }
+			// sig := jwtParts[2]
+			// theSig := sign(headerBytes, payloadBytes, key)
+			sigBytes, err := safeDecodeString(jwtParts[2])
+			if err != nil {
+				panic("invalid base64 signature")
+			}
+			// fmt.Println(expectedSig, sigBytes)
+
+			if hmac.Equal(sigBytes, expectedSig) {
 				fmt.Println("OK")
 			} else {
 				fmt.Println("BAD")
