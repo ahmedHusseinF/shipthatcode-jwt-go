@@ -87,11 +87,13 @@ func main() {
 			jwtParts := strings.Split(rest, ".")
 			headerBytes, err := safeDecodeString(jwtParts[0])
 			if err != nil {
-				panic("invalid base64 header")
+				fmt.Println("REJECTED bad_token")
+				continue
 			}
 			payloadBytes, err := safeDecodeString(jwtParts[1])
 			if err != nil {
-				panic("invalid base64 payload")
+				fmt.Println("REJECTED bad_token")
+				continue
 			}
 
 			header := JwtHeader{}
